@@ -23,6 +23,11 @@ fn count_dial_rotations(start: i32, dial_max: i32, instructions: &[DialRotation]
             DialRotation::Left { by: amount } => -i64::from(*amount),
             DialRotation::Right { by: amount } => i64::from(*amount),
         };
+        if add_amt == 0 {
+            // This should not happen, because the parser will reject 0 rotations; but if the enum type is constructed manually it's technically possible
+            continue;
+        }
+
         let prev = current;
         current += add_amt;
         let next_rot = current.div_euclid(dial_max_i64);
@@ -30,13 +35,17 @@ fn count_dial_rotations(start: i32, dial_max: i32, instructions: &[DialRotation]
 
         let mut add_count = (next_rot).abs() as u32;
         if prev == 0 && next_rot < 0 {
+            // Last iteration started on a 0, rotating to the left, so we didn't 'click' past it
             add_count -= 1
         }
         if current == 0 && next_rot <= 0 {
+            // This iteration landed on a 0 coming from the right; the math doesn't catch this final 0 (it's the correlary to the above exception)
             add_count += 1;
         }
 
-        count += add_count;
+        count = count
+            .checked_add(add_count)
+            .ok_or_else(|| anyhow!("Overflow on count!"))?;
     }
 
     Ok(count)

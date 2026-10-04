@@ -30,10 +30,10 @@ pub(crate) fn parse_rotation(rot_str: &str) -> Result<DialRotation> {
         idx += 1;
         by_amount = by_amount
             .checked_mul(10)
-            .ok_or(anyhow!("Rotation amount exceeds i32::MAX"))?;
+            .ok_or_else(|| anyhow!("Rotation amount exceeds i32::MAX"))?;
         by_amount = by_amount
             .checked_add(chrval)
-            .ok_or(anyhow!("Rotation amount exceeds i32::MAX"))?;
+            .ok_or_else(|| anyhow!("Rotation amount exceeds i32::MAX"))?;
     }
 
     if by_amount == 0 {
@@ -49,11 +49,10 @@ pub(crate) fn parse_rotation(rot_str: &str) -> Result<DialRotation> {
 
 pub(crate) fn parse_rotations(input: &str) -> Result<Vec<DialRotation>> {
     input
-        .to_string()
-        .split(char::is_whitespace)
-        .map(|line| line.trim())
-        .filter(|line| !line.is_empty())
-        .map(|line| parse_rotation(line).with_context(|| format!("Faulty rotation: \"{}\"", line)))
+        .split_whitespace()
+        .map(|token| {
+            parse_rotation(token).with_context(|| format!("Faulty rotation: \"{}\"", token))
+        })
         .collect()
 }
 
