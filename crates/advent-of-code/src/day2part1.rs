@@ -3,8 +3,7 @@ mod types;
 
 use anyhow::{Result, anyhow};
 use input::get_input;
-
-use crate::day2part1::types::{CombineOverlapsExt, IdRange};
+use types::{CombineOverlapsExt, IdRange};
 
 // Assuming u8 slice instead of &str to avoid unicode shenanigans, because input should theoretically only be ascii digits
 fn is_valid_id_bits(bits: &[u8]) -> bool {
