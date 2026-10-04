@@ -1,7 +1,7 @@
 mod input;
 mod types;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use input::get_input;
 
 use crate::day2part1::types::{CombineOverlapsExt, IdRange};
@@ -23,15 +23,14 @@ fn is_valid_id(num: u64) -> bool {
 }
 
 fn sum_invalid_ids(ranges: &[IdRange]) -> Result<u64> {
-    let sum = ranges
-        .into_iter()
+    ranges
+        .iter()
         .copied()
         .combine_overlaps()
         .flatten()
         .filter(|id| !is_valid_id(*id)) //TODO MAYBE: use shared memory location for all of the number->string conversions to avoid heap fragmentation? Is it worth it?
-        .sum(); //TODO: why is there no checked_sum method? This is where I was expecting errors to propagate, and why the method returns Result instead of u64
-
-    Ok(sum)
+        .try_fold(0_u64, |acc, next| acc.checked_add(next))
+        .ok_or_else(|| anyhow!("Sum caused overflow"))
 }
 
 pub(crate) fn compute() -> Result<u64> {
@@ -48,19 +47,19 @@ mod tests {
 
     #[test]
     fn test_is_valid_id_valid() {
-        let valid_ids: [u64; _] = [7, 13, 19, 95, 115, 1012, 222220, 1188511890];
+        let valid_ids: [u64; _] = [7, 13, 19, 95, 115, 1012, 222220, 123123123, 1188511890];
 
         for id in valid_ids {
-            assert!(is_valid_id(id));
+            assert!(is_valid_id(id), "id: {id}");
         }
     }
 
     #[test]
     fn test_is_valid_id_invalid() {
-        let invalid_ids: [u64; _] = [11, 22, 88, 1010, 222222, 336336, 99259925];
+        let invalid_ids: [u64; _] = [11, 22, 88, 1010, 1111, 222222, 336336, 99259925];
 
         for id in invalid_ids {
-            assert!(!is_valid_id(id));
+            assert!(!is_valid_id(id), "id: {id}");
         }
     }
 

@@ -33,7 +33,7 @@ fn count_dial_rotations(start: i32, dial_max: i32, instructions: &[DialRotation]
         let next_rot = current.div_euclid(dial_max_i64);
         current = current.rem_euclid(dial_max_i64);
 
-        let mut add_count = (next_rot).abs() as u32;
+        let mut add_count = (next_rot).unsigned_abs() as u32;
         if prev == 0 && next_rot < 0 {
             // Last iteration started on a 0, rotating to the left, so we didn't 'click' past it
             add_count -= 1
