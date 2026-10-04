@@ -1,7 +1,7 @@
 mod input;
 mod types;
 
-use anyhow::{Ok, Result, anyhow};
+use anyhow::{Result, anyhow};
 use input::INPUT;
 use types::DialRotation;
 
@@ -29,10 +29,7 @@ fn count_dial_rotations(
             DialRotation::Left { by: amount } => -i64::from(*amount),
             DialRotation::Right { by: amount } => i64::from(*amount),
         };
-        while current < 0 {
-            current += dial_max as i64;
-        }
-        current = current % dial_max as i64;
+        current = current.rem_euclid(dial_max as i64);
         if current == count_val as i64 {
             count += 1;
         }
