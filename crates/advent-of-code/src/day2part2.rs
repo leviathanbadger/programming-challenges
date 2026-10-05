@@ -10,15 +10,9 @@ use types::{CombineOverlapsExt, IdRange};
 fn is_valid_id_bits(bits: &[u8]) -> bool {
     let has_repeated_section = (1..=(bits.len() / 2))
         .filter(|len| bits.len().is_multiple_of(*len))
-        .map(|check| {
-            let num_copies = bits.len() / check;
-            (0..num_copies)
-                .map(|idx| &bits[(idx * check)..][..check])
-                .collect::<Vec<_>>()
-        })
         .any(|check| {
-            let (first, rest) = check.split_first().unwrap();
-            rest.iter().all(|sec| sec.eq(first))
+            bits.chunks_exact(check)
+                .all(|chunk| chunk == &bits[..check])
         });
 
     !has_repeated_section

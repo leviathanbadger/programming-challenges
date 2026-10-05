@@ -1,16 +1,21 @@
 use anyhow::{Result, anyhow};
-use num_traits::CheckedAdd;
+use num_traits::{CheckedAdd, Zero};
 
+/// A trait to provide a checked_sum operation that fails on overflow,
+/// instead of panicking in debug and giving incorrect results in release.
 pub trait CheckedSum: Iterator {
+    /// Items are summed in iteration order, and fails fast with an anyhow Result::Err
+    /// the first time adding a value causes an overflow. If all additions succeed,
+    /// the sum is returned in a Result::Ok. The sum of an empty iterator is 0.
     fn checked_sum(self) -> Result<Self::Item>;
 }
 
 impl<I> CheckedSum for I
 where
-    I: Iterator<Item: CheckedAdd + Default>,
+    I: Iterator<Item: CheckedAdd + Zero>,
 {
     fn checked_sum(mut self) -> Result<Self::Item> {
-        self.try_fold(Self::Item::default(), |acc, next| acc.checked_add(&next))
+        self.try_fold(Self::Item::zero(), |acc, next| acc.checked_add(&next))
             .ok_or_else(|| anyhow!("Overflow occurred summing values"))
     }
 }
