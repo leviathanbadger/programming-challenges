@@ -12,7 +12,7 @@ fn optimal_batteries_in_bank<T: Ord + Copy>(bank: &[T]) -> Option<(T, T)> {
 
     let mut max = bank[0];
     let mut max_idx = 0_usize;
-    for (idx, &val) in bank.iter().enumerate().skip(1).take(bank.len() - 2) {
+    for (idx, &val) in (1..).zip(&bank[1..bank.len() - 1]) {
         if val > max {
             max = val;
             max_idx = idx;
@@ -40,13 +40,7 @@ fn compute_max_joltage(bank_str: &str) -> Result<u32> {
 }
 
 fn compute_max_joltage_sum(banks: &[&str]) -> Result<u32> {
-    banks
-        .iter()
-        .copied()
-        .map(compute_max_joltage)
-        .collect::<Result<Vec<_>>>()? //TODO MAYBE: add variant to checked_sum that allows iterating over Result or Option, to avoid collecting
-        .into_iter()
-        .checked_sum()
+    banks.iter().copied().map(compute_max_joltage).checked_sum()
 }
 
 pub(crate) fn compute() -> Result<u32> {
@@ -95,6 +89,7 @@ mod tests {
     fn test_compute_max_joltage_produces_correct_results() {
         assert_eq!(compute_max_joltage("987654321111111").unwrap(), 98);
         assert_eq!(compute_max_joltage("811111111111119").unwrap(), 89);
+        assert_eq!(compute_max_joltage("811111718111111").unwrap(), 88);
         assert_eq!(compute_max_joltage("234234234234278").unwrap(), 78);
         assert_eq!(compute_max_joltage("818181911112111").unwrap(), 92);
     }
