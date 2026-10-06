@@ -5,17 +5,21 @@ use anyhow::{Result, anyhow};
 use input::get_input;
 use shared_utils::CheckedSum;
 
-fn optimal_batteries_in_bank<T: Ord + Copy + Default, const N: usize>(
-    bank: &[T],
-) -> Option<[T; N]> {
-    if bank.len() < N || N < 1 || N > 100 {
+fn optimal_batteries_in_bank<T: Ord + Copy, const N: usize>(bank: &[T]) -> Option<[T; N]> {
+    const {
+        assert!(
+            N >= 1 && std::mem::size_of::<T>() * N <= 1024,
+            "N must be >= 1, and total array size must be <= 1024 bytes."
+        )
+    }
+
+    if bank.len() < N {
         return None;
     }
 
-    let mut ret = [T::default(); N]; // TODO: is this a stack allocation issue? It's not allocated until after the above check, right?
     let mut candidates = bank;
 
-    for (n, val) in ret.iter_mut().enumerate() {
+    Some(std::array::from_fn(|n| {
         let mut max = candidates[0];
         let mut max_idx = 0_usize;
         let remaining = N - n - 1;
@@ -26,11 +30,10 @@ fn optimal_batteries_in_bank<T: Ord + Copy + Default, const N: usize>(
             }
         }
 
-        *val = max;
         candidates = &candidates[max_idx + 1..];
-    }
 
-    Some(ret)
+        max
+    }))
 }
 
 fn compute_max_joltage(bank_str: &str) -> Result<u64> {
@@ -103,6 +106,16 @@ mod tests {
         {
             let result = optimal_batteries_in_bank("818181911112111".as_bytes());
             assert_eq!(result, Some(*b"888911112111"));
+        }
+
+        {
+            let result = optimal_batteries_in_bank("2468".as_bytes());
+            assert_eq!(result, Some(*b"8"));
+        }
+
+        {
+            let result = optimal_batteries_in_bank("3965".as_bytes());
+            assert_eq!(result, Some(*b"3965"));
         }
 
         {
