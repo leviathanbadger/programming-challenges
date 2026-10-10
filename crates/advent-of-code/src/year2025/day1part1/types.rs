@@ -43,7 +43,7 @@ macro_rules! day1_dial_rotations {
     [ $( $rotation: ident )* ] => {
         [
             $({
-                const ROTATION: $crate::day1part1::types::DialRotation = $crate::day1part1::types::parse_rotation(stringify!($rotation));
+                const ROTATION: $crate::year2025::day1part1::types::DialRotation = $crate::year2025::day1part1::types::parse_rotation(stringify!($rotation));
                 ROTATION
             }),*
         ]
