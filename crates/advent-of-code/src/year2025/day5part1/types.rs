@@ -8,15 +8,6 @@ pub(super) struct IdRange {
     pub end: u64,
 }
 
-impl IntoIterator for IdRange {
-    type Item = u64;
-    type IntoIter = std::ops::RangeInclusive<u64>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.start..=self.end
-    }
-}
-
 struct CombineOverlaps {
     iter: Peekable<std::vec::IntoIter<IdRange>>,
 }
