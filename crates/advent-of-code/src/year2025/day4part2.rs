@@ -15,24 +15,25 @@ fn is_accessible_paper(grid: &SizedGrid<PrintingCell>, x: i32, y: i32) -> bool {
         ) < 4
 }
 
-fn count_accessible_paper_rolls_recursive(grid: &mut SizedGrid<PrintingCell>) -> u32 {
+fn count_accessible_paper_rolls_recursive(grid: &SizedGrid<PrintingCell>) -> u32 {
+    let mut grid_clone = grid.clone();
     let mut count = 0;
-    let mut found_accessible = true;
 
-    while found_accessible {
+    loop {
         let mut accessible_positions = vec![];
-        found_accessible = false;
-        for y in 0..grid.height() {
-            for x in 0..grid.width() {
-                if is_accessible_paper(grid, x as i32, y as i32) {
+        for y in 0..grid_clone.height() {
+            for x in 0..grid_clone.width() {
+                if is_accessible_paper(&grid_clone, x as i32, y as i32) {
                     count += 1;
-                    found_accessible = true;
                     accessible_positions.push((x as i32, y as i32));
                 }
             }
         }
+        if accessible_positions.is_empty() {
+            break;
+        }
         for (x, y) in accessible_positions {
-            *grid.get_mut(x, y).expect(
+            *grid_clone.get_mut(x, y).expect(
                 "Accessible cell should have been within grid bounds. This should be impossible",
             ) = PrintingCell::Empty;
         }
@@ -42,8 +43,8 @@ fn count_accessible_paper_rolls_recursive(grid: &mut SizedGrid<PrintingCell>) ->
 }
 
 pub fn compute() -> Result<u32> {
-    let mut grid = get_input()?;
-    Ok(count_accessible_paper_rolls_recursive(&mut grid))
+    let grid = get_input()?;
+    Ok(count_accessible_paper_rolls_recursive(&grid))
 }
 
 #[cfg(test)]
@@ -64,8 +65,8 @@ mod tests {
 @.@@@.@@@@
 .@@@@@@@@.
 @.@.@@@.@.";
-        let mut grid = parse_printing_grid(input_str).unwrap();
-        assert_eq!(count_accessible_paper_rolls_recursive(&mut grid), 43);
+        let grid = parse_printing_grid(input_str).unwrap();
+        assert_eq!(count_accessible_paper_rolls_recursive(&grid), 43);
     }
 
     #[test]

@@ -18,6 +18,7 @@ impl TryFrom<u8> for PrintingCell {
     }
 }
 
+#[derive(Clone)]
 pub(super) struct SizedGrid<T> {
     width: usize,
     height: usize,
@@ -78,7 +79,6 @@ impl<T> SizedGrid<T> {
         *self.get(col, row).unwrap_or(&default)
     }
 
-    #[allow(dead_code)] // This is the only way to modify grids, if this were moved to a library and reused
     pub fn get_mut(&mut self, col: i32, row: i32) -> Option<&mut T> {
         if col < 0 || row < 0 || col as usize >= self.width || row as usize >= self.height {
             None
