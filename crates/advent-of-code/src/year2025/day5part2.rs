@@ -3,18 +3,20 @@ mod types;
 
 use input::get_input;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use shared_utils::CheckedSum;
 use types::IdRange;
 
-fn count_fresh_ingredients(fresh_id_ranges: &[IdRange]) -> Result<usize> {
+fn count_fresh_ingredients(fresh_id_ranges: &[IdRange]) -> Result<u64> {
     fresh_id_ranges
         .iter()
-        .map(|range| (range.end - range.start + 1) as usize)
-        .checked_sum()
+        .map(|range| range.end - range.start)
+        .checked_sum()?
+        .checked_add(fresh_id_ranges.len() as u64) // Ranges are end-inclusive; adjusting sum here so I don't have to do it incrementally for each range in the map
+        .ok_or_else(|| anyhow!("Fresh ID count exceeds u64"))
 }
 
-pub fn compute() -> Result<usize> {
+pub fn compute() -> Result<u64> {
     let fresh_id_ranges = get_input()?;
     count_fresh_ingredients(&fresh_id_ranges)
 }

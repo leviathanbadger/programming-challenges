@@ -58,8 +58,7 @@ pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<IdRange>> {
     let (id_ranges_str, _) = text
         .split_once("\r\n\r\n")
         .or_else(|| text.split_once("\n\n"))
-        .or(Some((text, "")))
-        .ok_or_else(|| anyhow!("Dunno how this happened. Should be impossible."))?;
+        .unwrap_or((text, ""));
 
     parse_id_ranges(id_ranges_str)
 }
