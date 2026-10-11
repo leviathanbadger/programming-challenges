@@ -18,15 +18,18 @@ impl TryFrom<u8> for PrintingCell {
     }
 }
 
-pub(super) struct SizedGrid<T: Sized + Copy + Clone> {
+pub(super) struct SizedGrid<T> {
     width: usize,
     height: usize,
     data: Vec<T>,
 }
 
-impl<T: Sized + Copy + Clone> SizedGrid<T> {
+impl<T> SizedGrid<T> {
     #[allow(dead_code)] // This is the intended way to create new grids, if this were moved to a library and reused
-    pub fn new(width: usize, height: usize, initial: T) -> Self {
+    pub fn new(width: usize, height: usize, initial: T) -> Self
+    where
+        T: Clone,
+    {
         SizedGrid {
             width,
             height,
@@ -34,9 +37,9 @@ impl<T: Sized + Copy + Clone> SizedGrid<T> {
         }
     }
 
-    pub fn try_from_fn<F>(width: usize, height: usize, f: F) -> Result<Self>
+    pub fn try_from_fn<F>(width: usize, height: usize, mut f: F) -> Result<Self>
     where
-        F: Fn(usize, usize) -> Result<T>,
+        F: FnMut(usize, usize) -> Result<T>,
     {
         let mut data = Vec::with_capacity(width * height);
         for y in 0..height {
@@ -68,7 +71,10 @@ impl<T: Sized + Copy + Clone> SizedGrid<T> {
         }
     }
 
-    pub fn get_or_default(&self, col: i32, row: i32, default: T) -> T {
+    pub fn get_or_default(&self, col: i32, row: i32, default: T) -> T
+    where
+        T: Copy,
+    {
         *self.get(col, row).unwrap_or(&default)
     }
 
@@ -81,11 +87,12 @@ impl<T: Sized + Copy + Clone> SizedGrid<T> {
         }
     }
 
-    pub fn count_surrounding_matches<F>(&self, x: i32, y: i32, f: F, edge_value: T) -> u32
+    pub fn count_surrounding_matches<F>(&self, x: i32, y: i32, mut f: F, edge_value: T) -> u32
     where
-        F: Fn(T) -> bool,
+        F: FnMut(T) -> bool,
+        T: Copy,
     {
-        let one_if_true = |val: T| if f(val) { 1 } else { 0 };
+        let mut one_if_true = |val: T| if f(val) { 1 } else { 0 };
         one_if_true(self.get_or_default(x - 1, y - 1, edge_value))
             + one_if_true(self.get_or_default(x, y - 1, edge_value))
             + one_if_true(self.get_or_default(x + 1, y - 1, edge_value))
@@ -97,10 +104,7 @@ impl<T: Sized + Copy + Clone> SizedGrid<T> {
     }
 }
 
-impl<T> std::fmt::Debug for SizedGrid<T>
-where
-    T: Sized + Copy + Clone,
-{
+impl<T> std::fmt::Debug for SizedGrid<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SizedGrid")
             .field("width", &self.width)
@@ -112,7 +116,7 @@ where
 pub(super) fn parse_printing_grid(input_str: &str) -> Result<SizedGrid<PrintingCell>> {
     let lines = input_str.split_whitespace().collect::<Vec<_>>();
     let height = lines.len();
-    let width = lines[0].len();
+    let width = if height == 0 { 0 } else { lines[0].len() };
 
     if lines.iter().any(|line| line.len() != width) {
         return Err(anyhow!("One or more lines are not the correct length"));
@@ -148,6 +152,13 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_printing_grid_zero_sized() {
+        let grid = parse_printing_grid("").unwrap();
+        assert_eq!(grid.width(), 0);
+        assert_eq!(grid.height(), 0);
+    }
+
+    #[test]
     fn test_sized_grid_get_set() {
         let mut grid = SizedGrid::new(10, 10, 0);
 
@@ -171,7 +182,6 @@ mod tests {
         assert_eq!(grid.get_or_default(10, 0, -1), -1);
         assert_eq!(grid.get_or_default(0, 10, -1), -1);
 
-        //TODO: even aside from the .unwrap(), this doesn't seem like a very readable pattern. Is there a more idiomatic way to do this?
         *grid.get_mut(2, 2).unwrap() = 25;
         assert_matches!(grid.get(2, 2), Some(25));
         assert_matches!(grid.get(3, 3), Some(0));
