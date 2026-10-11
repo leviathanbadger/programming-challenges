@@ -53,7 +53,7 @@ fn parse_number_vertical(lines: &[&str], col: usize) -> Option<u64> {
     let mut found_digit = false;
     let mut accum = 0u64;
 
-    for bit_opt in (0..lines.len()).map(|row| lines[row].as_bytes().get(col)) {
+    for bit_opt in lines.iter().map(|line| line.as_bytes().get(col)) {
         if let Some(bit) = bit_opt
             && bit.is_ascii_digit()
         {
@@ -77,8 +77,7 @@ where
         match item {
             None => {
                 if !curr.is_empty() {
-                    all.push(curr);
-                    curr = vec![];
+                    all.push(std::mem::take(&mut curr));
                 }
             }
             Some(val) => {
@@ -95,7 +94,7 @@ where
 }
 
 pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<MathProblem>> {
-    let lines: Vec<_> = text.trim().lines().collect();
+    let lines: Vec<_> = text.trim_end().lines().collect();
     if lines.len() < 2 {
         return Err(anyhow!(
             "Could not parse input. There must be at least one number line and exactly one op line"
@@ -120,7 +119,7 @@ pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<MathProblem>> {
 
     if ops.len() != windowed_numbers.len() {
         return Err(anyhow!(
-            "Could not parse input. Op line must contain the same number of operations as numbers in each of the numbers lines."
+            "Could not parse input. Op line must contain the same number of operations as groups of vertical lines."
         ));
     }
 
