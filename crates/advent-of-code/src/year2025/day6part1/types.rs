@@ -29,14 +29,10 @@ impl FromStr for MathOperation {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> std::prelude::v1::Result<Self, Self::Err> {
-        if s.len() != 1 {
-            return Err(anyhow!("Can't parse MathOperation from &str: \"{s}\""));
-        }
-        let bit = s.as_bytes()[0];
-        match bit {
-            b'*' => Ok(MathOperation::Multiplication),
-            b'+' => Ok(MathOperation::Addition),
-            _ => Err(anyhow!("Can't parse MathOperation from u8: {bit}")),
+        match s {
+            "*" => Ok(MathOperation::Multiplication),
+            "+" => Ok(MathOperation::Addition),
+            _ => Err(anyhow!("Can't parse MathOperation from &str: \"{s}\"")),
         }
     }
 }
@@ -55,7 +51,7 @@ impl MathProblem {
 
 pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<MathProblem>> {
     let lines: Vec<_> = text.trim().lines().collect();
-    if lines.len() <= 2 {
+    if lines.len() < 2 {
         return Err(anyhow!(
             "Could not parse input. There must be at least one number line and exactly one op line"
         ));
@@ -79,9 +75,8 @@ pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<MathProblem>> {
         ));
     }
 
-    let transposed_numbers = (0..numbers[0].len())
-        .map(|col| numbers.iter().map(|n| n[col]).collect::<Vec<_>>())
-        .collect::<Vec<_>>();
+    let transposed_numbers =
+        (0..numbers[0].len()).map(|col| numbers.iter().map(|n| n[col]).collect::<Vec<_>>());
 
     let ops = ops_line
         .split_whitespace()

@@ -26,9 +26,9 @@ mod tests {
     fn test_sample() {
         let math_problems = parse_puzzle_input(
             "123 328  51 64
-     45 64  387 23
-      6 98  215 314
-    *   +   *   + ",
+ 45 64  387 23
+  6 98  215 314
+*   +   *   +  ",
         )
         .unwrap();
 
