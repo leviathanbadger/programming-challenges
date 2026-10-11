@@ -17,8 +17,6 @@ impl IntoIterator for IdRange {
     }
 }
 
-// TODO: there has _got_ to be a better way to implement extension methods for iterators.
-// Does Rust really not have any syntax sugar for this?
 pub(crate) struct CombineOverlaps {
     iter: Peekable<std::vec::IntoIter<IdRange>>,
 }
