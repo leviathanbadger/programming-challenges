@@ -6,18 +6,14 @@ use input::get_input;
 use anyhow::Result;
 use types::IdRange;
 
-/// Checks if the specified id is in the passed-in ID ranges. Assumes fresh_id_ranges is presorted by IdRange#start.
+/// Checks if the specified id is in the passed-in ID ranges.
+/// Assumes fresh_id_ranges is presorted by IdRange#start, and with no range overlaps.
 fn is_ingredient_fresh(id: u64, fresh_id_ranges: &[IdRange]) -> bool {
     let result = fresh_id_ranges.binary_search_by_key(&id, |range| range.start);
     match result {
         Ok(_) => true,
-        Err(idx) => {
-            if idx == 0 {
-                false
-            } else {
-                fresh_id_ranges[idx - 1].end >= id
-            }
-        }
+        Err(0) => false,
+        Err(idx) => fresh_id_ranges[idx - 1].end >= id,
     }
 }
 
