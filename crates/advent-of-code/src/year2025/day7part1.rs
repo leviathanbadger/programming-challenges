@@ -8,7 +8,7 @@ use input::get_input;
 use types::TachyonManifoldPart;
 
 /// Assumptions: all input lines are the same length, no input lines start or end with a splitter
-fn count_tachyon_splits(input: &Vec<Vec<TachyonManifoldPart>>) -> u32 {
+fn count_tachyon_splits(input: &[Vec<TachyonManifoldPart>]) -> u32 {
     let mut prev = HashSet::new();
     let mut next = HashSet::new();
     let mut split_count = 0;
@@ -34,7 +34,8 @@ fn count_tachyon_splits(input: &Vec<Vec<TachyonManifoldPart>>) -> u32 {
             }
         }
 
-        prev = std::mem::take(&mut next)
+        std::mem::swap(&mut prev, &mut next);
+        next.clear();
     }
 
     split_count

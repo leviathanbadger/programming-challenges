@@ -24,10 +24,9 @@ pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<Vec<TachyonManifoldPa
     let mut puzzle_input = text
         .lines()
         .map(|line| {
-            line.as_bytes()
-                .iter()
-                .map(|bit| TryFrom::try_from(*bit))
-                .collect::<Result<Vec<TachyonManifoldPart>>>()
+            line.bytes()
+                .map(TachyonManifoldPart::try_from)
+                .collect::<Result<Vec<_>>>()
         })
         .collect::<Result<Vec<_>>>()?;
 
@@ -35,7 +34,15 @@ pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<Vec<TachyonManifoldPa
         .iter()
         .any(|line| line.len() != puzzle_input[0].len())
     {
-        return Err(anyhow!("All puzzle input lines must be the same length."));
+        return Err(anyhow!(
+            "All puzzle input lines must be the same length, and >= 3 characters wide."
+        ));
+    }
+
+    if puzzle_input.is_empty() || puzzle_input[0].len() < 3 {
+        return Err(anyhow!(
+            "There must be at least one puzzle input line, and the puzzle must be >= 3 characters wide."
+        ));
     }
 
     if puzzle_input.iter().any(|line| {
@@ -95,6 +102,24 @@ mod tests {
 .....",
             );
             assert_matches!(result, Err(err) if err.to_string().contains("All puzzle input lines must be the same length"));
+        }
+    }
+
+    #[test]
+    fn test_parse_puzzle_input_too_small() {
+        {
+            let result = parse_puzzle_input("..");
+            assert_matches!(result, Err(err) if err.to_string().contains("must be >= 3 characters wide"));
+        }
+
+        {
+            let result = parse_puzzle_input("\n");
+            assert_matches!(result, Err(err) if err.to_string().contains("must be >= 3 characters wide"));
+        }
+
+        {
+            let result = parse_puzzle_input("");
+            assert_matches!(result, Err(err) if err.to_string().contains("must be at least one puzzle input line"));
         }
     }
 
