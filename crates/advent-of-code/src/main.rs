@@ -1,3 +1,5 @@
+#![feature(cmp_minmax)]
+
 mod year2025;
 
 use anyhow::Result;
