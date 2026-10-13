@@ -50,7 +50,7 @@ macro_rules! day1_dial_rotations {
     };
 }
 
-pub(crate) use day1_dial_rotations;
+pub(super) use day1_dial_rotations;
 
 #[cfg(test)]
 mod tests {

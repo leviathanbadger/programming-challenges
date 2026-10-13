@@ -10,14 +10,13 @@ use anyhow::{Result, anyhow};
 #[derive(Debug)]
 pub(super) struct Circuit {
     pub point_indices: Vec<usize>,
-    #[allow(dead_code)]
-    // I'm anticipating that this will be needed for part 2. I'll consider removing it if it becomes apparent it won't be.
     pub connections: Vec<(usize, usize)>,
 }
 
 /// Computes the connected circuits in the specified points slice after attempting connect_count connections
 /// If a pair would join two points in an already-connected circuit, the pair is ignored and no connection is created.
 /// On success, returns a Vec<Circuit> sorted by the number of points in each circuit in descending order.
+/// The circuit's "connections" will be sorted by the order in which connections are added to each circuit.
 pub(super) fn connect_closest_points(
     points: &[Point3d],
     connect_count: usize,
@@ -79,13 +78,24 @@ pub(super) fn connect_closest_points(
     Ok(results)
 }
 
+/// Computes the connected circuit in the specified points slice after attempting all connections in ascending order of point distance.
+/// If a pair would join two points in an already-connected circuit, the pair is ignored and no connection is created.
+/// On success, returns the resultant Circuit. The circuit's "connections" will be sorted by the order in which connections were added.
 pub(super) fn connect_all_closest_points(points: &[Point3d]) -> Result<Circuit> {
+    if points.is_empty() {
+        return Err(anyhow!(
+            "Can't connect all points - no cluster can be created with no points!"
+        ));
+    }
+
     let mut circuits = connect_closest_points(points, (points.len() * (points.len() - 1)) / 2)?;
     Ok(circuits.remove(0))
 }
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::super::point::parse_puzzle_input;
     use super::*;
 
@@ -102,5 +112,12 @@ mod tests {
         assert_eq!(circuits[0].point_indices.len(), 1);
         assert_eq!(circuits[1].point_indices.len(), 1);
         assert_eq!(circuits[2].point_indices.len(), 1);
+    }
+
+    #[test]
+    fn test_connect_all_closest_points_point_count_0() {
+        let points: [Point3d; 0] = [];
+        let result = connect_all_closest_points(&points);
+        assert_matches!(result, Err(e) if e.to_string().contains("no cluster can be created with no points"));
     }
 }

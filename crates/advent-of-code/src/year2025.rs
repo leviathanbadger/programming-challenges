@@ -13,6 +13,7 @@ mod day6part2;
 mod day7part1;
 mod day7part2;
 mod day8;
+mod day9;
 
 use anyhow::Result;
 
@@ -34,6 +35,8 @@ pub fn year2025() -> Result<()> {
     println!("Day 7, part 2: {}", day7part2::compute()?);
     println!("Day 8, part 1: {}", day8::compute_part1()?);
     println!("Day 8, part 2: {}", day8::compute_part2()?);
+    println!("Day 9, part 1: {}", day9::compute_part1()?);
+    // println!("Day 9, part 2: {}", day9::compute_part2()?);
 
     Ok(())
 }

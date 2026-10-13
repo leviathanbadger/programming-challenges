@@ -21,6 +21,7 @@ fn product_largest_circuits(circuits: &[Circuit], largest_count: usize) -> Resul
 }
 
 /// Computes the product of the x-coordinates of the two points specified in the last connection of the specified circuit.
+/// Assumes the circuit's connections are in chronological order of when they were added.
 fn product_last_connection_x_coords(points: &[Point3d], circuit: &Circuit) -> Result<i64> {
     let connection = circuit
         .connections
@@ -34,9 +35,7 @@ fn product_last_connection_x_coords(points: &[Point3d], circuit: &Circuit) -> Re
         .get(connection.1)
         .ok_or_else(|| anyhow!("The connection references an out-of-bounds to point"))?;
 
-    i64::from(p1.x)
-        .checked_mul(i64::from(p2.x))
-        .ok_or_else(|| anyhow!("Overflow multiplying connection point x-coordinates"))
+    Ok(i64::from(p1.x) * i64::from(p2.x))
 }
 
 pub(super) fn compute_part1() -> Result<u32> {
