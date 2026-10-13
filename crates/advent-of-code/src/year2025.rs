@@ -36,7 +36,7 @@ pub fn year2025() -> Result<()> {
     println!("Day 8, part 1: {}", day8::compute_part1()?);
     println!("Day 8, part 2: {}", day8::compute_part2()?);
     println!("Day 9, part 1: {}", day9::compute_part1()?);
-    // println!("Day 9, part 2: {}", day9::compute_part2()?);
+    println!("Day 9, part 2: {}", day9::compute_part2()?);
 
     Ok(())
 }
