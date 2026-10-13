@@ -15,6 +15,9 @@ pub(super) struct Circuit {
     pub connections: Vec<(usize, usize)>,
 }
 
+/// Computes the connected circuits in the specified points slice after attempting connect_count connections
+/// If a pair would join two points in an already-connected circuit, the pair is ignored and no connection is created.
+/// On success, returns a Vec<Circuit> sorted by the number of points in each circuit in descending order.
 pub(super) fn connect_closest_points(
     points: &[Point3d],
     connect_count: usize,
@@ -22,39 +25,38 @@ pub(super) fn connect_closest_points(
     let pairs = get_closest_points(points)?;
     let mut circuit_ids = Vec::from_fn(points.len(), |idx| idx);
     let mut connected_pairs = vec![];
-    let mut connected_count = 0;
 
-    for pair in pairs {
+    if connect_count > pairs.len() {
+        return Err(anyhow!(
+            "Requested {connect_count} connection attempts, but only {} exist",
+            pairs.len()
+        ));
+    }
+
+    for pair in pairs.into_iter().take(connect_count) {
         let first_c = circuit_ids[pair.from_idx];
         let second_c = circuit_ids[pair.to_idx];
-        if first_c != second_c {
-            connected_pairs.push((pair.from_idx, pair.to_idx));
-            let [new_c, old_c] = minmax(first_c, second_c);
-            for cid in &mut circuit_ids {
-                if *cid == old_c {
-                    *cid = new_c;
-                }
+        if first_c == second_c {
+            continue;
+        }
+
+        connected_pairs.push((pair.from_idx, pair.to_idx));
+        let [new_c, old_c] = minmax(first_c, second_c);
+        for cid in &mut circuit_ids {
+            if *cid == old_c {
+                *cid = new_c;
             }
         }
 
-        connected_count += 1;
-        if connected_count == connect_count {
+        //Stop early if all points have joined the same circuit. There will be no further connections.
+        if connected_pairs.len() == points.len() - 1 {
             break;
         }
     }
 
-    if connected_count < connect_count {
-        return Err(anyhow!(
-            "Could not make {connect_count} connections; all points are in a single circuit after only {connected_count}!"
-        ));
-    }
-
-    // TODO MAYBE: add itertools and use into_grouping_map_by(...).aggregate(...)
-
     let mut map = HashMap::<usize, Vec<usize>>::new();
-    for (idx, _) in points.iter().enumerate() {
-        let entry = map.entry(circuit_ids[idx]).or_default();
-        entry.push(idx);
+    for (idx, &circuit_id) in circuit_ids.iter().enumerate() {
+        map.entry(circuit_id).or_default().push(idx);
     }
 
     let mut results = map
@@ -75,4 +77,30 @@ pub(super) fn connect_closest_points(
     results.sort_by_key(|r| Reverse(r.point_indices.len()));
 
     Ok(results)
+}
+
+pub(super) fn connect_all_closest_points(points: &[Point3d]) -> Result<Circuit> {
+    let mut circuits = connect_closest_points(points, (points.len() * (points.len() - 1)) / 2)?;
+    Ok(circuits.remove(0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::point::parse_puzzle_input;
+    use super::*;
+
+    #[test]
+    fn test_connect_closest_points_connect_count_0() {
+        let points = parse_puzzle_input(
+            "1,2,3
+4,5,6
+7,8,9",
+        )
+        .unwrap();
+        let circuits = connect_closest_points(&points, 0).unwrap();
+        assert_eq!(circuits.len(), 3);
+        assert_eq!(circuits[0].point_indices.len(), 1);
+        assert_eq!(circuits[1].point_indices.len(), 1);
+        assert_eq!(circuits[2].point_indices.len(), 1);
+    }
 }

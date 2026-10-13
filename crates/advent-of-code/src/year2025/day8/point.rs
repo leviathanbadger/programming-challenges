@@ -5,6 +5,7 @@ use std::{
     str::FromStr,
 };
 
+/// Represents a 3D point in space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Point3d {
     pub x: i32,
@@ -51,20 +52,28 @@ impl FromStr for Point3d {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut nums = s.split(',').map(str::trim).map(i32::from_str);
-        if let (Some(x), Some(y), Some(z), None) =
+        if let (Some(x_result), Some(y_result), Some(z_result), None) =
             (nums.next(), nums.next(), nums.next(), nums.next())
         {
-            Ok(Point3d {
-                x: x?,
-                y: y?,
-                z: z?,
-            })
+            let [x, y, z] = [x_result?, y_result?, z_result?];
+            if x.unsigned_abs() > 1_000_000_000
+                || y.unsigned_abs() > 1_000_000_000
+                || z.unsigned_abs() > 1_000_000_000
+            {
+                Err(anyhow!(
+                    "Point3d axes must be within +- 1 billion; otherwise downstream computations will overflow"
+                ))
+            } else {
+                Ok(Point3d { x, y, z })
+            }
         } else {
             Err(anyhow!("Point3d must be made with exactly three values"))
         }
     }
 }
 
+/// Parses the puzzle input - a sequence of 3D points. One point per line,
+/// each point using comma-separated axes (like "x,y,z"). No axis should be < -1 billion or > 1 billion.
 pub(super) fn parse_puzzle_input(text: &str) -> Result<Vec<Point3d>> {
     text.lines().map(Point3d::from_str).collect()
 }
@@ -133,6 +142,39 @@ mod tests {
     fn test_parse_puzzle_input_invalid_number() {
         let result = parse_puzzle_input("162,i,812");
         assert_matches!(result, Err(e) if e.to_string().contains("invalid digit"));
+    }
+
+    #[test]
+    fn test_parse_puzzle_input_overlarge_number() {
+        {
+            let result = parse_puzzle_input("162,25,1000000001");
+            assert_matches!(result, Err(e) if e.to_string().contains("must be within +- 1 billion"));
+        }
+
+        {
+            let result = parse_puzzle_input("162,25,-1000000001");
+            assert_matches!(result, Err(e) if e.to_string().contains("must be within +- 1 billion"));
+        }
+
+        {
+            let result = parse_puzzle_input("162,1000000001,25");
+            assert_matches!(result, Err(e) if e.to_string().contains("must be within +- 1 billion"));
+        }
+
+        {
+            let result = parse_puzzle_input("162,-1000000001,25");
+            assert_matches!(result, Err(e) if e.to_string().contains("must be within +- 1 billion"));
+        }
+
+        {
+            let result = parse_puzzle_input("1000000001,162,25");
+            assert_matches!(result, Err(e) if e.to_string().contains("must be within +- 1 billion"));
+        }
+
+        {
+            let result = parse_puzzle_input("-1000000001,162,25");
+            assert_matches!(result, Err(e) if e.to_string().contains("must be within +- 1 billion"));
+        }
     }
 
     #[test]

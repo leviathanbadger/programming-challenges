@@ -9,6 +9,7 @@ pub(super) struct PointDist2 {
     pub dist2: u64,
 }
 
+/// Note: this method assumes all points have no axes < -1 billion or > 1 billion.
 fn point_distance2(from_idx: usize, to_idx: usize, from_pt: Point3d, to_pt: Point3d) -> PointDist2 {
     let diff = to_pt - from_pt;
     PointDist2 {
@@ -20,6 +21,9 @@ fn point_distance2(from_idx: usize, to_idx: usize, from_pt: Point3d, to_pt: Poin
     }
 }
 
+/// Returns a vector containing each pair of points, sorted in ascending order
+/// based on the linear distance between the points. Note: this method assumes
+/// all points have no axes < -1 billion or > 1 billion.
 pub(super) fn get_closest_points(points: &[Point3d]) -> Result<Vec<PointDist2>> {
     if points.len() > 5000 {
         return Err(anyhow!(
@@ -27,8 +31,6 @@ pub(super) fn get_closest_points(points: &[Point3d]) -> Result<Vec<PointDist2>> 
         ));
     }
 
-    // TODO MAYBE: store points in a spatial structure to optimize skipping points heuristically. Depends on performance;
-    // but I actually can't think of a way to guarantee any heuristic wouldn't skip a pair needed downstream
     let mut dists = points
         .iter()
         .enumerate()
