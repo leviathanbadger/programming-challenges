@@ -34,9 +34,8 @@ pub(super) fn largest_rectangle_from_corner_points(
 }
 
 bitflags! {
-    // TODO: terrible name, but I'm not sure what to call it. Whatever, it's internal code
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    struct ShapePart: u32 {
+    struct CellFlags: u32 {
         const OUTSIDE    = 0b00000;
         const INSIDE     = 0b00001;
         const EDGE_UP    = 0b00010;
@@ -87,8 +86,8 @@ fn compute_coordinate_compression_shape(
     points: &[Point],
     x_coords: &[i32],
     y_coords: &[i32],
-) -> Result<SizedGrid<ShapePart>> {
-    let mut grid = SizedGrid::new(x_coords.len(), y_coords.len(), ShapePart::OUTSIDE);
+) -> Result<SizedGrid<CellFlags>> {
+    let mut grid = SizedGrid::new(x_coords.len(), y_coords.len(), CellFlags::OUTSIDE);
 
     let pairwise_compressed = points.iter().enumerate().map(|(curr_idx, &curr)| {
         let next_idx = (curr_idx + 1) % points.len();
@@ -105,14 +104,14 @@ fn compute_coordinate_compression_shape(
             if curr.y == next.y {
                 *grid.get_mut(curr.x, curr.y).ok_or_else(|| {
                     anyhow!("Point outside compressed grid space. Should be impossible")
-                })? |= ShapePart::INSIDE;
+                })? |= CellFlags::INSIDE;
                 continue; // No reasonable way to handle edges for duplicate points
             } else if curr.y < next.y {
                 // Edge moving down
                 for y in curr.y..=next.y {
                     *grid.get_mut(curr.x, y).ok_or_else(|| {
                         anyhow!("Point outside compressed grid space. Should be impossible")
-                    })? |= ShapePart::EDGE_RIGHT | ShapePart::INSIDE;
+                    })? |= CellFlags::EDGE_RIGHT | CellFlags::INSIDE;
                 }
             } else {
                 // curr.y > next.y
@@ -120,17 +119,19 @@ fn compute_coordinate_compression_shape(
                 for y in next.y..=curr.y {
                     *grid.get_mut(curr.x, y).ok_or_else(|| {
                         anyhow!("Point outside compressed grid space. Should be impossible")
-                    })? |= ShapePart::EDGE_LEFT | ShapePart::INSIDE;
+                    })? |= CellFlags::EDGE_LEFT | CellFlags::INSIDE;
                 }
             }
         } else {
             // curr.y == next.y
+            // Horizontal edges computed for parity, and for potential future display purposes,
+            // but they are not used when determining inside/outside in the next section of code.
             if curr.x < next.x {
                 // Edge moving right
                 for x in curr.x..=next.x {
                     *grid.get_mut(x, curr.y).ok_or_else(|| {
                         anyhow!("Point outside compressed grid space. Should be impossible")
-                    })? |= ShapePart::EDGE_UP | ShapePart::INSIDE;
+                    })? |= CellFlags::EDGE_UP | CellFlags::INSIDE;
                 }
             } else {
                 // curr.x > next.x
@@ -138,7 +139,7 @@ fn compute_coordinate_compression_shape(
                 for x in next.x..=curr.x {
                     *grid.get_mut(x, curr.y).ok_or_else(|| {
                         anyhow!("Point outside compressed grid space. Should be impossible")
-                    })? |= ShapePart::EDGE_DOWN | ShapePart::INSIDE;
+                    })? |= CellFlags::EDGE_DOWN | CellFlags::INSIDE;
                 }
             }
         }
@@ -148,15 +149,15 @@ fn compute_coordinate_compression_shape(
         let mut is_inside = false;
         for x in 0..grid.width() {
             let cell = grid.get_mut(x as i32, y as i32).unwrap();
-            if cell.contains(ShapePart::EDGE_LEFT) {
+            if cell.contains(CellFlags::EDGE_LEFT) {
                 is_inside = true;
             }
-            if cell.contains(ShapePart::EDGE_RIGHT) {
+            if cell.contains(CellFlags::EDGE_RIGHT) {
                 is_inside = false;
             }
 
             if is_inside {
-                *cell |= ShapePart::INSIDE;
+                *cell |= CellFlags::INSIDE;
             }
         }
     }
@@ -170,7 +171,7 @@ fn is_rect_in_bounds_with_compression(
     p2_idx: usize,
     x_coords: &[i32],
     y_coords: &[i32],
-    grid: &SizedGrid<ShapePart>,
+    grid: &SizedGrid<CellFlags>,
 ) -> Result<bool> {
     let [minx, maxx] = minmax(points[p1_idx].x, points[p2_idx].x);
     let [miny, maxy] = minmax(points[p1_idx].y, points[p2_idx].y);
@@ -180,8 +181,8 @@ fn is_rect_in_bounds_with_compression(
     for x in minp.x..=maxp.x {
         for y in minp.y..=maxp.y {
             if !grid
-                .get_or_default(x, y, ShapePart::OUTSIDE)
-                .contains(ShapePart::INSIDE)
+                .get_or_default(x, y, CellFlags::OUTSIDE)
+                .contains(CellFlags::INSIDE)
             {
                 return Ok(false);
             }
