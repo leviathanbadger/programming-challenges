@@ -1,5 +1,3 @@
-use anyhow::{Result, anyhow};
-
 use super::point::Point;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,30 +30,6 @@ pub(super) fn compute_winding(points: &[Point]) -> Winding {
         Some(x) if x < 0 => Winding::Clockwise,
         _ => Winding::Counterclockwise,
     }
-}
-
-pub(super) fn compute_winding_discontiguous(
-    points: &[Point],
-    start_idx: usize,
-    end_idx: usize,
-) -> Result<Winding> {
-    if start_idx >= points.len() || end_idx >= points.len() {
-        return Err(anyhow!("One or more indices out of bounds"));
-    }
-
-    if end_idx >= start_idx {
-        return Ok(compute_winding(&points[start_idx..=end_idx]));
-    }
-
-    let start_points = &points[start_idx..];
-    let end_points = &points[..=end_idx];
-    // TODO MAYBE - if performance is a problem, implement special case here instead of copying the ranges to a new collection
-    let points_view = start_points
-        .iter()
-        .chain(end_points.iter())
-        .copied()
-        .collect::<Vec<_>>();
-    Ok(compute_winding(&points_view))
 }
 
 #[cfg(test)]

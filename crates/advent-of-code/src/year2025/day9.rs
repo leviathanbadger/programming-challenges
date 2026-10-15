@@ -18,7 +18,7 @@ pub(super) fn compute_part1() -> Result<u64> {
 
 pub(super) fn compute_part2() -> Result<u64> {
     let points = get_input()?;
-    let (_, _, area) = largest_rectangle_from_bounding_corner_points(&points)
+    let (_, _, area) = largest_rectangle_from_bounding_corner_points(&points)?
         .ok_or_else(|| anyhow!("Somehow there were no input points..."))?;
     Ok(area)
 }
@@ -55,7 +55,9 @@ mod tests {
     #[test]
     fn test_part2_sample() {
         let points = parse_puzzle_input(SAMPLE_INPUT).unwrap();
-        let (p1, p2, area) = largest_rectangle_from_bounding_corner_points(&points).unwrap();
+        let (p1, p2, area) = largest_rectangle_from_bounding_corner_points(&points)
+            .unwrap()
+            .unwrap();
         assert_eq!(area, 24);
 
         let winners = [(point!(2, 3), point!(9, 5))];

@@ -7,3 +7,4 @@ edition = "2024"
 anyhow = { workspace = true }
 shared-utils = { version = "0.1.0", path = "../shared-utils" }
 num-traits = { workspace = true }
+bitflags = { workspace = true }

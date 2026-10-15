@@ -6,5 +6,7 @@
 //! the galaxy, as library and binary!
 
 mod checked_sum;
+mod sized_grid;
 
 pub use checked_sum::CheckedSum;
+pub use sized_grid::SizedGrid;

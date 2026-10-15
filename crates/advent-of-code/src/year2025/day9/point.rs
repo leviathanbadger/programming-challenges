@@ -58,12 +58,10 @@ impl FromStr for Point {
     }
 }
 
-#[cfg(test)]
 macro_rules! point {
     ( $x:expr , $y:expr ) => {
         crate::year2025::day9::point::Point { x: ($x), y: ($y) }
     };
 }
 
-#[cfg(test)]
 pub(super) use point;
