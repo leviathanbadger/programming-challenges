@@ -2,7 +2,7 @@ mod buttons;
 mod input;
 mod machine_spec;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result};
 use buttons::compute_minimum_buttons_pressed;
 use input::get_input;
 use machine_spec::MachineSpec;
@@ -11,13 +11,12 @@ use shared_utils::CheckedSum;
 fn sum_minimum_buttons_pressed(machine_specs: &[MachineSpec]) -> Result<u32> {
     machine_specs
         .iter()
-        .map(compute_minimum_buttons_pressed)
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .checked_sum()
-        .ok_or_else(|| {
-            anyhow!("One or more machine specs could not be solved for minimum buttons pressed")
+        .enumerate()
+        .map(|(idx, machine)| {
+            compute_minimum_buttons_pressed(machine)
+                .with_context(|| format!("Machine {idx} could not be solved"))
         })
+        .checked_sum()
 }
 
 pub(super) fn compute_part1() -> Result<u32> {

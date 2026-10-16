@@ -1,78 +1,75 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow, ensure};
 
 fn parse_indicator_lights(text: &str) -> Result<(usize, u32)> {
-    if text.len() < 3 || !text.starts_with("[") || !text.ends_with("]") {
-        return Err(anyhow!("Could not parse indicator lights from \"{text}\""));
-    }
+    ensure!(
+        text.len() <= 34,
+        "Can't parse indicator lights - max length is 32"
+    );
 
-    let lights = text.as_bytes()[1..text.len() - 1]
+    ensure!(
+        text.len() >= 3,
+        "Could not parse indicator lights from \"{text}\""
+    );
+
+    let lights: u32 = text
+        .strip_circumfix("[", "]")
+        .with_context(|| format!("Could not parse indicator lights from \"{text}\""))?
+        .as_bytes()
         .iter()
-        .copied()
-        .map(|value| match value {
-            b'.' => Ok(false),
-            b'#' => Ok(true),
-            _ => Err(anyhow!("Could not parse IndicatorLight from u8 {value}")),
-        })
-        .collect::<Result<Vec<_>>>()?;
+        .enumerate()
+        .try_fold(0u32, |acc, (idx, value)| {
+            let next = match value {
+                b'.' => 0,
+                b'#' => 1,
+                _ => return Err(anyhow!("Could not parse IndicatorLight from u8 {value}")),
+            };
+            Ok(acc | ((next as u32) << idx))
+        })?;
 
-    if lights.len() > 32 {
-        return Err(anyhow!("Can't parse indicator lights - max length is 32"));
-    }
-
-    Ok((
-        text.len() - 2,
-        lights
-            .iter()
-            .rev()
-            .fold(0u32, |acc, next| (acc << 1) | (*next as u32)),
-    ))
-}
-
-/// Assumes text is at least 2 characters long
-fn remove_first_last(text: &str) -> &str {
-    debug_assert!(text.len() >= 2);
-
-    let mut chrs = text.chars();
-    chrs.next();
-    chrs.next_back();
-    chrs.as_str()
+    Ok((text.len() - 2, lights))
 }
 
 fn parse_button_wiring_schematic(text: &str, light_count: usize) -> Result<u32> {
-    if text.len() < 3 || !text.starts_with("(") || !text.ends_with(")") {
-        return Err(anyhow!(
-            "Could not parse button wiring schematic from \"{text}\""
-        ));
+    ensure!(
+        text.len() >= 3,
+        "Could not parse button wiring schematic from \"{text}\""
+    );
+
+    let body = text
+        .strip_circumfix("(", ")")
+        .context("Could not parse button wiring schematic from \"{text}\"")?;
+
+    let mut schematic = 0u32;
+
+    for num_str in body.split(',') {
+        let light_idx = num_str.trim().parse::<usize>()?;
+
+        ensure!(
+            light_idx < light_count,
+            "Light index refers to nonexistant indicator light!"
+        );
+
+        let bit = 1 << light_idx;
+        ensure!(
+            schematic & bit == 0,
+            "Duplicate light index {light_idx} - ambiguous desired behavior"
+        );
+
+        schematic |= bit;
     }
 
-    remove_first_last(text)
-        .split(',')
-        .map(|num_str| num_str.trim().parse::<usize>().map_err(|e| anyhow!(e)))
-        .try_fold(0u32, |acc, next_result| {
-            next_result.and_then(|btn_idx| {
-                if btn_idx >= light_count {
-                    Err(anyhow!(
-                        "Button index refers to nonexistant indicator light!"
-                    ))
-                } else if acc & (1 << btn_idx) != 0 {
-                    Err(anyhow!(
-                        "Duplicate button index {btn_idx} - ambiguous desired behavior, failing fast"
-                    ))
-                } else {
-                    Ok(acc | (1 << btn_idx))
-                }
-            })
-        })
+    Ok(schematic)
 }
 
 fn parse_joltage_requirements(text: &str, light_count: usize) -> Result<Vec<u32>> {
-    if text.len() < 3 || !text.starts_with("{") || !text.ends_with("}") {
-        return Err(anyhow!(
-            "Could not parse joltage requirements from \"{text}\""
-        ));
-    }
+    ensure!(
+        text.len() >= 3,
+        "Could not parse joltage requirements from \"{text}\""
+    );
 
-    let joltage_requirements = remove_first_last(text)
+    let joltage_requirements = text
+        .strip_circumfix("{", "}")
+        .context("Could not parse joltage requirements from \"{text}\"")?
         .split(',')
         .map(|num_str| num_str.trim().parse::<u32>().map_err(|e| anyhow!(e)))
         .collect::<Result<Vec<_>>>()?;
@@ -209,7 +206,7 @@ mod tests {
 
         for text in malformed_input {
             let result = parse_button_wiring_schematic(text, 10);
-            assert_matches!(result, Err(e) if e.to_string().contains("Could not parse button wiring") || e.to_string().contains("invalid digit"));
+            assert_matches!(result, Err(e) if e.to_string().contains("Could not parse button wiring") || e.to_string().contains("invalid digit") || e.to_string().contains("cannot parse integer"));
         }
     }
 
@@ -222,7 +219,7 @@ mod tests {
     #[test]
     fn test_parse_button_wiring_schematic_duplicate() {
         let result = parse_button_wiring_schematic("(0, 3, 4, 3)", 5);
-        assert_matches!(result, Err(e) if e.to_string().contains("Duplicate button index"));
+        assert_matches!(result, Err(e) if e.to_string().contains("Duplicate light index"));
     }
 
     #[test]
@@ -251,7 +248,7 @@ mod tests {
 
         for text in malformed_input {
             let result = parse_joltage_requirements(text, 10);
-            assert_matches!(result, Err(e) if e.to_string().contains("Could not parse joltage") || e.to_string().contains("invalid digit"));
+            assert_matches!(result, Err(e) if e.to_string().contains("Could not parse joltage") || e.to_string().contains("invalid digit") || e.to_string().contains("cannot parse integer"));
         }
     }
 

@@ -12,16 +12,16 @@ pub trait CheckedSum<Kind>: Iterator {
     type Sum;
     /// The return type. In most cases, anyhow::Result<Self::Sum>. When the iterator item
     /// is an Option, this will be Option<Self::Sum>.
-    type Result;
+    type Output;
 
-    /// Items are summed in iteration order, and fails fast with an anyhow Result::Err
+    /// Items are summed in iteration order, and fails fast with an anyhow Result::Err (or None if iterating over Options)
     /// the first time adding a value causes an overflow. If all additions succeed,
-    /// the sum is returned in a Result::Ok. The sum of an empty iterator is 0.
+    /// the sum is returned in a Result::Ok (or Some). The sum of an empty iterator is 0.
     ///
     /// When iterating over Results (instead of plain numeric values) the first Err
     /// is converted to an anyhow Err and passed back instead. No additional items are
     /// consumed.
-    fn checked_sum(self) -> Self::Result;
+    fn checked_sum(self) -> Self::Output;
 }
 
 pub struct Plain;
@@ -30,9 +30,9 @@ where
     I: Iterator<Item: CheckedAdd + Zero>,
 {
     type Sum = Self::Item;
-    type Result = anyhow::Result<Self::Sum>;
+    type Output = anyhow::Result<Self::Sum>;
 
-    fn checked_sum(mut self) -> Self::Result {
+    fn checked_sum(mut self) -> Self::Output {
         self.try_fold(Self::Sum::zero(), |acc, next| {
             acc.checked_add(&next)
                 .ok_or_else(|| anyhow!("Overflow occurred summing values"))
@@ -48,9 +48,9 @@ where
     E: Into<anyhow::Error>,
 {
     type Sum = V;
-    type Result = anyhow::Result<Self::Sum>;
+    type Output = anyhow::Result<Self::Sum>;
 
-    fn checked_sum(mut self) -> Self::Result {
+    fn checked_sum(mut self) -> Self::Output {
         self.try_fold(Self::Sum::zero(), |acc, next_result| {
             let next = next_result.map_err(Into::into)?;
             acc.checked_add(&next)
@@ -66,9 +66,9 @@ where
     V: CheckedAdd + Zero,
 {
     type Sum = V;
-    type Result = Option<Self::Sum>;
+    type Output = Option<Self::Sum>;
 
-    fn checked_sum(mut self) -> Self::Result {
+    fn checked_sum(mut self) -> Self::Output {
         self.try_fold(Self::Sum::zero(), |acc, next_opt| {
             next_opt.and_then(|next| acc.checked_add(&next))
         })
