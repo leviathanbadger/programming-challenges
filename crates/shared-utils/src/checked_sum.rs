@@ -8,7 +8,11 @@ pub trait CheckedSum<Kind>: Iterator {
     ///
     /// For iterators over numeric values (with provided CheckedAdd implementations), this is the item type.
     /// For iterators over Results of numeric values, this is the result's success type,
+    /// For iterators over Options of numeric values, this is the option's Some type.
     type Sum;
+    /// The return type. In most cases, anyhow::Result<Self::Sum>. When the iterator item
+    /// is an Option, this will be Option<Self::Sum>.
+    type Result;
 
     /// Items are summed in iteration order, and fails fast with an anyhow Result::Err
     /// the first time adding a value causes an overflow. If all additions succeed,
@@ -17,7 +21,7 @@ pub trait CheckedSum<Kind>: Iterator {
     /// When iterating over Results (instead of plain numeric values) the first Err
     /// is converted to an anyhow Err and passed back instead. No additional items are
     /// consumed.
-    fn checked_sum(self) -> anyhow::Result<Self::Sum>;
+    fn checked_sum(self) -> Self::Result;
 }
 
 pub struct Plain;
@@ -26,8 +30,9 @@ where
     I: Iterator<Item: CheckedAdd + Zero>,
 {
     type Sum = Self::Item;
+    type Result = anyhow::Result<Self::Sum>;
 
-    fn checked_sum(mut self) -> anyhow::Result<Self::Sum> {
+    fn checked_sum(mut self) -> Self::Result {
         self.try_fold(Self::Sum::zero(), |acc, next| {
             acc.checked_add(&next)
                 .ok_or_else(|| anyhow!("Overflow occurred summing values"))
@@ -35,20 +40,37 @@ where
     }
 }
 
-pub struct Fallible;
-impl<I, V, E> CheckedSum<Fallible> for I
+pub struct FallibleResult;
+impl<I, V, E> CheckedSum<FallibleResult> for I
 where
     I: Iterator<Item = Result<V, E>>,
     V: CheckedAdd + Zero,
     E: Into<anyhow::Error>,
 {
     type Sum = V;
+    type Result = anyhow::Result<Self::Sum>;
 
-    fn checked_sum(mut self) -> anyhow::Result<Self::Sum> {
+    fn checked_sum(mut self) -> Self::Result {
         self.try_fold(Self::Sum::zero(), |acc, next_result| {
             let next = next_result.map_err(Into::into)?;
             acc.checked_add(&next)
                 .ok_or_else(|| anyhow!("Overflow occurred summing values"))
+        })
+    }
+}
+
+pub struct FallibleOption;
+impl<I, V> CheckedSum<FallibleOption> for I
+where
+    I: Iterator<Item = Option<V>>,
+    V: CheckedAdd + Zero,
+{
+    type Sum = V;
+    type Result = Option<Self::Sum>;
+
+    fn checked_sum(mut self) -> Self::Result {
+        self.try_fold(Self::Sum::zero(), |acc, next_opt| {
+            next_opt.and_then(|next| acc.checked_add(&next))
         })
     }
 }
@@ -125,6 +147,40 @@ mod tests {
 
         let result = nums.into_iter().checked_sum();
         assert_matches!(result, Err(err) if err.to_string().eq("Overflow occurred summing values"));
+        // Also tests that the function short-circuits because the iterator is otherwise infinite
+    }
+
+    #[test]
+    fn test_sum_options_success() {
+        let nums = (1..=5).map(Some);
+
+        let sum = nums.into_iter().checked_sum();
+        assert_matches!(sum, Some(15));
+    }
+
+    #[test]
+    fn test_sum_options_error() {
+        let nums = (1..).map(|n| if n == 4 { None } else { Some(n) });
+
+        let sum = nums.into_iter().checked_sum();
+        assert_matches!(sum, None);
+        // Also tests that the function short-circuits because the iterator is otherwise infinite
+    }
+
+    #[test]
+    fn test_sum_options_empty() {
+        let nums = (1..1).map(Some);
+
+        let sum = nums.into_iter().checked_sum().unwrap();
+        assert_eq!(sum, 0);
+    }
+
+    #[test]
+    fn test_sum_options_error_overflow() {
+        let nums = (1..).map(Some);
+
+        let result = nums.into_iter().checked_sum();
+        assert_matches!(result, None);
         // Also tests that the function short-circuits because the iterator is otherwise infinite
     }
 }
