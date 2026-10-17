@@ -9,9 +9,8 @@ fn does_set_solve_machine(machine_spec: &MachineSpec, indices: &[usize]) -> bool
 fn advance_combination(indices: &mut [usize], choose_count: usize) -> bool {
     let count = indices.len();
 
-    for rank in 0..count {
-        let next_idx = count - 1 - rank;
-        if indices[next_idx] < choose_count - 1 - rank {
+    for next_idx in (0..count).rev() {
+        if indices[next_idx] < choose_count + next_idx - count {
             let val = indices[next_idx] + 1;
             for q in 0..count - next_idx {
                 indices[next_idx + q] = val + q;

@@ -85,14 +85,9 @@ fn parse_joltage_requirements(text: &str, light_count: usize) -> Result<Vec<u32>
 
 #[derive(Debug)]
 pub(super) struct MachineSpec {
-    #[allow(
-        dead_code,
-        reason = "May be used in part 2; regardless, needed to correctly reproduce input"
-    )]
     pub light_count: usize,
     pub indicator_lights: u32,
     pub button_wiring_schematics: Vec<u32>,
-    #[allow(dead_code, reason = "Will be used in part 2 presumably")]
     pub joltage_requirements: Vec<u32>,
 }
 

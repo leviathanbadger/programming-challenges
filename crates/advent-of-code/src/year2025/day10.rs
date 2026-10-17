@@ -1,11 +1,13 @@
-mod buttons;
 mod input;
 mod machine_spec;
+mod part1;
+mod part2;
 
 use anyhow::{Context, Result};
-use buttons::compute_minimum_buttons_pressed;
 use input::get_input;
 use machine_spec::MachineSpec;
+use part1::compute_minimum_buttons_pressed;
+use part2::compute_minimum_buttons_pressed_for_joltage;
 use shared_utils::CheckedSum;
 
 fn sum_minimum_buttons_pressed(machine_specs: &[MachineSpec]) -> Result<u32> {
@@ -19,16 +21,26 @@ fn sum_minimum_buttons_pressed(machine_specs: &[MachineSpec]) -> Result<u32> {
         .checked_sum()
 }
 
+fn sum_minimum_buttons_pressed_for_joltage(machine_specs: &[MachineSpec]) -> Result<u32> {
+    machine_specs
+        .iter()
+        .enumerate()
+        .map(|(idx, machine)| {
+            compute_minimum_buttons_pressed_for_joltage(machine)
+                .with_context(|| format!("Machine {idx} could not be solved"))
+        })
+        .checked_sum()
+}
+
 pub(super) fn compute_part1() -> Result<u32> {
     let machine_specs = get_input()?;
     sum_minimum_buttons_pressed(&machine_specs)
 }
 
-// pub(super) fn compute_part2() -> Result<u64> {
-//     let points = get_input()?;
-
-//     todo!();
-// }
+pub(super) fn compute_part2() -> Result<u32> {
+    let machine_specs = get_input()?;
+    sum_minimum_buttons_pressed_for_joltage(&machine_specs)
+}
 
 #[cfg(test)]
 mod tests {
@@ -46,8 +58,10 @@ mod tests {
         assert_eq!(sum, 7);
     }
 
-    // #[test]
-    // fn test_part2_sample() {
-    //     todo!();
-    // }
+    #[test]
+    fn test_part2_sample() {
+        let machine_specs = parse_puzzle_input(SAMPLE_INPUT).unwrap();
+        let sum = sum_minimum_buttons_pressed_for_joltage(&machine_specs).unwrap();
+        assert_eq!(sum, 33);
+    }
 }
