@@ -26,8 +26,10 @@ fn sum_minimum_buttons_pressed_for_joltage(machine_specs: &[MachineSpec]) -> Res
         .iter()
         .enumerate()
         .map(|(idx, machine)| {
-            compute_minimum_buttons_pressed_for_joltage(machine)
-                .with_context(|| format!("Machine {idx} could not be solved"))
+            let min_pressed = compute_minimum_buttons_pressed_for_joltage(machine)
+                .with_context(|| format!("Machine {idx} could not be solved"))?;
+            println!("Solved {idx}: {min_pressed}");
+            Ok::<_, anyhow::Error>(min_pressed)
         })
         .checked_sum()
 }

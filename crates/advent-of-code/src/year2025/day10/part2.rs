@@ -1,25 +1,42 @@
-use shared_utils::CheckedSum;
-
 use super::machine_spec::MachineSpec;
+use std::cmp::Reverse;
+
+fn optimize_machine_spec(machine_spec: &mut MachineSpec) {
+    // Not sure if any of the input even has joltage requirements with value 0, but if they do then throw away buttons that increase that joltage
+    machine_spec.button_wiring_schematics = machine_spec
+        .button_wiring_schematics
+        .iter()
+        .copied()
+        .filter(|btn| {
+            *btn != 0 // This check should be impossible; but in case it weirdly happens, the rest can be skipped
+                && machine_spec
+                    .joltage_requirements
+                    .iter()
+                    .enumerate()
+                    .all(|(light_idx, jolt_req)| *jolt_req != 0 || (1 << light_idx) & *btn == 0)
+        })
+        .collect();
+
+    machine_spec
+        .button_wiring_schematics
+        .sort_by_key(|btn| Reverse(btn.count_ones()));
+}
 
 fn compute_max_button_presses(machine_spec: &MachineSpec) -> Vec<usize> {
-    let btn_count = machine_spec.button_wiring_schematics.len();
-    Vec::from_fn(btn_count, |btn_idx| {
-        let btn = machine_spec.button_wiring_schematics[btn_idx];
-        machine_spec
-            .joltage_requirements
-            .iter()
-            .enumerate()
-            .map(|(light_idx, joltage_req)| {
-                if btn & (1 << light_idx) == 0 {
-                    usize::MAX
-                } else {
-                    *joltage_req as usize
-                }
-            })
-            .min()
-            .unwrap()
-    })
+    machine_spec
+        .button_wiring_schematics
+        .iter()
+        .map(|btn| {
+            machine_spec
+                .joltage_requirements
+                .iter()
+                .enumerate()
+                .filter(|(light_idx, _)| *btn & (1 << light_idx) != 0)
+                .map(|(_, joltage_req)| *joltage_req as usize)
+                .min()
+                .expect("Every button must have at least one light it affects")
+        })
+        .collect()
 }
 
 fn fill_from_left_with_max(
@@ -28,6 +45,8 @@ fn fill_from_left_with_max(
     start_idx: usize,
     fill_count: usize,
 ) -> bool {
+    debug_assert_eq!(btn_presses.len(), max_btn_presses.len());
+
     let mut remaining_count = fill_count;
     for (cell_btn_presses, cell_max_presses) in btn_presses
         .iter_mut()
@@ -48,10 +67,18 @@ fn does_set_solve_machine(
 ) -> bool {
     joltage.fill(0);
 
-    for (btn_idx, btn) in machine_spec.button_wiring_schematics.iter().enumerate() {
+    debug_assert_eq!(
+        machine_spec.button_wiring_schematics.len(),
+        btn_presses.len()
+    );
+    for (&btn, &presses) in machine_spec
+        .button_wiring_schematics
+        .iter()
+        .zip(btn_presses)
+    {
         for (pos, jolt) in joltage.iter_mut().enumerate() {
             if btn & (1 << pos) != 0 {
-                *jolt += btn_presses[btn_idx] as u32;
+                *jolt += presses as u32;
                 if *jolt > machine_spec.joltage_requirements[pos] {
                     return false;
                 }
@@ -75,10 +102,9 @@ fn advance_combination(btn_presses: &mut [usize], max_btn_presses: &[usize]) -> 
         }
     }
 
-    if last_unfilled_idx.is_none() {
+    let Some(last_unfilled_idx) = last_unfilled_idx else {
         return false;
-    }
-    let last_unfilled_idx = last_unfilled_idx.unwrap();
+    };
 
     for next_idx in (0..last_unfilled_idx).rev() {
         if btn_presses[next_idx] > 0 {
@@ -129,12 +155,20 @@ pub(super) fn compute_minimum_buttons_pressed_for_joltage(
         return Some(0);
     }
 
+    let mut optimized_machine_spec = machine_spec.clone();
+    optimize_machine_spec(&mut optimized_machine_spec);
+
     // Calculate once for all button computation checks
-    let max_btn_presses = compute_max_button_presses(machine_spec);
+    let max_btn_presses = compute_max_button_presses(&optimized_machine_spec);
     let max_btn_presses_total = max_btn_presses.iter().sum();
 
+    println!(
+        "max_btn_presses_total: {max_btn_presses_total}, max_btn_presses: {max_btn_presses:?}"
+    );
+
     for count in 1..=max_btn_presses_total {
-        if can_solve_machine_with_button_count(machine_spec, count, &max_btn_presses) {
+        println!("Trying count: {count}");
+        if can_solve_machine_with_button_count(&optimized_machine_spec, count, &max_btn_presses) {
             return Some(count as u32);
         }
     }
@@ -381,30 +415,32 @@ mod tests {
 
     #[test]
     fn test_compute_minimum_buttons_pressed_for_joltage() {
-        {
-            let input = "[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}";
-            let machine_spec = parse_machine_spec(input).unwrap();
-            assert_eq!(
-                compute_minimum_buttons_pressed_for_joltage(&machine_spec).unwrap(),
-                10
-            );
-        }
+        let test_cases: [(&str, Option<u32>); _] = [
+            ("[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}", Some(10)),
+            (
+                "[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}",
+                Some(12),
+            ),
+            (
+                "[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}",
+                Some(11),
+            ),
+            ("[..] (0) (1) {0,0}", Some(0)),
+            ("[..] (0) {0,1}", None),
+            ("[..] (0,1) {1,2}", None),
+            ("[..] (0) (1) {0,2}", Some(2)),
+            ("[..] (0) (1) (0,1) {1,1}", Some(1)),
+            (
+                "[.....] (0) (1) (2) (3) (4) (0,1,2,3,4) {50,50,50,50,50}",
+                Some(50),
+            ),
+        ];
 
-        {
-            let input = "[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}";
+        for (input, expected) in test_cases {
             let machine_spec = parse_machine_spec(input).unwrap();
             assert_eq!(
-                compute_minimum_buttons_pressed_for_joltage(&machine_spec).unwrap(),
-                12
-            );
-        }
-
-        {
-            let input = "[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}";
-            let machine_spec = parse_machine_spec(input).unwrap();
-            assert_eq!(
-                compute_minimum_buttons_pressed_for_joltage(&machine_spec).unwrap(),
-                11
+                compute_minimum_buttons_pressed_for_joltage(&machine_spec),
+                expected
             );
         }
     }

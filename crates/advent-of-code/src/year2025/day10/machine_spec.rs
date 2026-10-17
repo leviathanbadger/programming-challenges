@@ -83,7 +83,7 @@ fn parse_joltage_requirements(text: &str, light_count: usize) -> Result<Vec<u32>
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct MachineSpec {
     pub light_count: usize,
     pub indicator_lights: u32,
